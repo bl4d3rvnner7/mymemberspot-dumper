@@ -453,4 +453,3 @@ It motivates further updates and improvements.
 
 - [Report Bug](https://github.com/bl4d3rvnner7/mymemberspot-dumper/issues)
 - [Request Feature](https://github.com/bl4d3rvnner7/mymemberspot-dumper/issues)
-- [Documentation](https://github.com/bl4d3rvnner7/mymemberspot-dumper/wiki)
