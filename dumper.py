@@ -122,6 +122,7 @@ class MemberspotDumper:
         self.tenant_id = self.config.get("tenant_id")
         self.school_id = self.config.get("school_id")
         self.base_url = self.config.get("base_url")
+        self.debug = self.config.get("debug")
         
         # Chapter limit settings
         self.chapter_limit = self.config.get("chapter_limit", 50)
@@ -274,29 +275,111 @@ class MemberspotDumper:
         color_print(f"    [!] Failed to get chapter {chapter_id}: {response.status_code}", Colors.RED)
         return None
     
+    def download_chapter_thumbnail(self, chapter_info: Dict, chapter_dir: Path, chapter_idx: int):
+        """Download chapter thumbnail image"""
+        thumbnail_url = chapter_info.get('thumbnailUrl')
+        
+        if not thumbnail_url:
+            return
+        
+        # Determine file extension
+        if thumbnail_url.endswith(('.jpg', '.jpeg', '.png', '.webp')):
+            base_url = thumbnail_url.split('?')[0]
+            ext = base_url.split('.')[-1]
+        else:
+            ext = 'jpg'
+        
+        thumbnail_path = chapter_dir / f"chapter_thumbnail.{ext}"
+        
+        # Check if thumbnail already exists
+        if thumbnail_path.exists() and thumbnail_path.stat().st_size > 1000:
+            return
+        
+        try:
+            file_headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Referer': self.base_url,
+            }
+            
+            response = requests.get(thumbnail_url, headers=file_headers, stream=True, timeout=30)
+            
+            if response.status_code == 200:
+                with open(thumbnail_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                
+                if thumbnail_path.exists() and thumbnail_path.stat().st_size > 0:
+                    return True
+        except Exception:
+            pass
+        
+        return False
+
     def download_course_thumbnail(self, course_info: Dict, course_dir: Path):
         """Download course thumbnail image"""
-        thumbnail_url = course_info.get('image')
+        # Try multiple possible field names for thumbnail
+        thumbnail_url = course_info.get('thumbnailUrl') or course_info.get('image')
+        
         if not thumbnail_url:
             color_print(f"  [!] No thumbnail URL found for course", Colors.YELLOW)
             return
-        
+    
         # Determine file extension from URL or default to jpg
         if thumbnail_url.endswith(('.jpg', '.jpeg', '.png', '.webp')):
-            ext = thumbnail_url.split('.')[-1]
+            # Extract extension from URL, handling query parameters
+            base_url = thumbnail_url.split('?')[0]
+            ext = base_url.split('.')[-1]
         else:
             ext = 'jpg'
         
         thumbnail_path = course_dir / f"course_thumbnail.{ext}"
         
+        # Check if thumbnail already exists
+        if thumbnail_path.exists() and thumbnail_path.stat().st_size > 1000:
+            color_print(f"  [✓] Thumbnail already exists", Colors.GREEN)
+            return True
+        
         try:
-            response = requests.get(thumbnail_url, headers=self.api_headers, stream=True, timeout=30)
+            # Use minimal headers for thumbnail download (same as file downloads)
+            file_headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Referer': self.base_url,
+            }
+            
+            response = requests.get(thumbnail_url, headers=file_headers, stream=True, timeout=30)
+            
             if response.status_code == 200:
+                # Get total size for progress bar
+                total_size = int(response.headers.get('content-length', 0))
+                
                 with open(thumbnail_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                color_print(f"  [+] Downloaded course thumbnail", Colors.GREEN)
-                return True
+                    if total_size > 0:
+                        with tqdm(total=total_size, unit='B', unit_scale=True, desc=f"  Downloading thumbnail", leave=False) as pbar:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                                    pbar.update(len(chunk))
+                    else:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                
+                if thumbnail_path.exists() and thumbnail_path.stat().st_size > 0:
+                    size_kb = thumbnail_path.stat().st_size / 1024
+                    color_print(f"  [+] Downloaded course thumbnail ({size_kb:.1f} KB)", Colors.GREEN)
+                    return True
+                else:
+                    color_print(f"  [!] Downloaded thumbnail is empty", Colors.YELLOW)
+                    if thumbnail_path.exists():
+                        thumbnail_path.unlink()
+                    return False
             else:
                 color_print(f"  [!] Failed to download thumbnail: HTTP {response.status_code}", Colors.YELLOW)
                 return False
@@ -340,85 +423,126 @@ If you found this tool useful, please consider starring the repository on GitHub
         
         color_print(f"        [-] Failed after {self.max_retries} attempts", Colors.RED)
         return False
+
+    def sanitize_filename_for_fs(self, name: str) -> str:
+        """Extra aggressive sanitization for filesystem paths"""
+        if isinstance(name, Path):
+            name = str(name)
+
+        name = sanitize_name(name)
+        name = re.sub(r'[<>:"/\\|?*]', '', name)
+        if len(name) > 200:
+            name = name[:200]
+        return name.strip()
+
+    def debug_print(self, msg, color=Colors.DIM):
+        if self.debug:
+            color_print(msg, color)
+
     
     def download_video(self, video_info: Dict, output_path: Path, lesson_num: int, lesson_name: str):
-        """Download video using the hlsSrc URL with stealth yt-dlp command"""
+        """Download video using HLS with safe temp file handling"""
+
+        # STEP 1: Get HLS URL
+        self.debug_print(f"        [DEBUG] Getting HLS URL...", Colors.DIM)
         hls_url = video_info.get('hlsSrc')
         if not hls_url:
-            color_print(f"        [!] No hlsSrc found in video info", Colors.RED)
+            self.debug_print(f"        [!] No hlsSrc found", Colors.RED)
             return False
-        
-        # Check if file already exists and has reasonable size
-        if output_path.exists() and output_path.stat().st_size > 1024 * 1024:  # > 1MB
-            size_mb = output_path.stat().st_size / (1024 * 1024)
-            color_print(f"        [✓] Already downloaded: {output_path.name} ({size_mb:.2f} MB)", Colors.GREEN)
-            return True
-        
-        # Use yt-dlp with stealth options for best results
-        ytdlp = shutil.which('yt-dlp')
-        if ytdlp:
-            # Stealth yt-dlp command with retry options
-            cmd = [
-                ytdlp,
-                '-N', str(self.config.get("ytdlp_threads", 4)),
-                '-o', str(output_path),
-                '--no-progress',
-                '--retries', str(self.config.get("ytdlp_retries", 10)),
-                '--fragment-retries', str(self.config.get("ytdlp_fragment_retries", 10)),
-                '--skip-unavailable-fragments',
-                '--hls-prefer-native',
-                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                '--add-header', f'authorization:{self.api_headers.get("authorization", "")}',
-                '--add-header', f'app-version:{self.api_headers.get("app-version", "")}',
-                '--add-header', f'app:{self.api_headers.get("app", "")}',
-                '--add-header', f'origin:{self.base_url}',
-                '--add-header', f'referer:{self.base_url}/',
-                '--geo-bypass',
-                hls_url
-            ]
-        else:
-            # Fallback to ffmpeg with retry
-            ffmpeg = shutil.which('ffmpeg')
-            if not ffmpeg:
-                color_print(f"        [!] Neither yt-dlp nor ffmpeg found", Colors.RED)
-                return False
-            
-            cmd = [
-                ffmpeg, '-i', hls_url,
-                '-c', 'copy',
-                '-bsf:a', 'aac_adtstoasc',
-                '-y',
-                str(output_path)
-            ]
-        
+
+        # STEP 2: Ensure directory exists
         try:
-            # Run command with timeout (1 hour per video)
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
-            if result.returncode == 0 and output_path.exists() and output_path.stat().st_size > 0:
-                size_mb = output_path.stat().st_size / (1024 * 1024)
-                color_print(f"        [+] Downloaded: {output_path.name} ({size_mb:.2f} MB)", Colors.GREEN)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            self.debug_print(f"        [!] Directory creation failed: {e}", Colors.RED)
+            return False
+
+        # STEP 3: Skip if already downloaded
+        if output_path.exists():
+            size = output_path.stat().st_size
+            if size > 1024 * 1024:
+                size_mb = size / (1024 * 1024)
+                color_print(f"        [✓] Already exists: {output_path.name} ({size_mb:.2f} MB)", Colors.GREEN)
                 return True
             else:
-                error = result.stderr[:200] if result.stderr else "Unknown"
-                if "403" in error or "Forbidden" in error:
-                    color_print(f"        [-] Access forbidden -可能需要更新token", Colors.RED)
+                output_path.unlink()
+
+        # STEP 4: yt-dlp check
+        ytdlp = shutil.which('yt-dlp')
+        if not ytdlp:
+            self.debug_print(f"        [!] yt-dlp not found", Colors.RED)
+            return False
+
+        # STEP 5: Temp file (SAFE!)
+        import uuid
+        temp_output = output_path.parent / f".tmp_{uuid.uuid4().hex}.mp4"
+
+        # STEP 6: Build command
+        cmd = [
+            ytdlp,
+            '-N', str(self.config.get("ytdlp_threads", 4)),
+            '-o', str(temp_output),
+            '--retries', str(self.config.get("ytdlp_retries", 10)),
+            '--fragment-retries', str(self.config.get("ytdlp_fragment_retries", 10)),
+            '--skip-unavailable-fragments',
+            '--concurrent-fragments', '5',
+            '--geo-bypass',
+            '--quiet',
+            '--no-progress',
+            '--hls-use-mpegts',
+            hls_url
+        ]
+
+        # STEP 7: Run download
+        color_print(f"        [*] Downloading...", Colors.CYAN)
+        start_time = time.time()
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+            elapsed = time.time() - start_time
+
+            if result.returncode == 0:
+                if temp_output.exists() and temp_output.stat().st_size > 0:
+                    try:
+                        shutil.move(str(temp_output), str(output_path))
+
+                        size = output_path.stat().st_size
+                        size_mb = size / (1024 * 1024)
+
+                        color_print(f"        [+] Done: {output_path.name} ({size_mb:.2f} MB) in {elapsed:.1f}s", Colors.GREEN)
+                        return True
+
+                    except Exception as e:
+                        self.debug_print(f"        [!] Move failed: {e}", Colors.RED)
+                        return False
                 else:
-                    color_print(f"        [-] Download error: {error}", Colors.RED)
-                # Remove partial file
-                if output_path.exists():
-                    output_path.unlink()
-                return False
+                    self.debug_print(f"        [!] Temp file missing/empty", Colors.RED)
+
+            else:
+                self.debug_print(f"        [!] yt-dlp failed ({result.returncode})", Colors.RED)
+
+                if result.stderr:
+                    for line in result.stderr.splitlines()[:10]:
+                        if line.strip():
+                            self.debug_print(f"        {line}", Colors.YELLOW)
+
+            return False
+
         except subprocess.TimeoutExpired:
-            color_print(f"        [-] Download timeout after 1 hour", Colors.RED)
-            if output_path.exists():
-                output_path.unlink()
+            self.debug_print(f"        [!] Timeout after 2h", Colors.RED)
             return False
+
         except Exception as e:
-            color_print(f"        [-] Error: {e}", Colors.RED)
-            if output_path.exists():
-                output_path.unlink()
+            self.debug_print(f"        [!] Exception: {e}", Colors.RED)
             return False
-    
+
+        finally:
+            # STEP 8: Cleanup temp file
+            if temp_output.exists():
+                try:
+                    temp_output.unlink()
+                except:
+                    pass
     def download_file_with_retry(self, url: str, output_path: Path):
         """Download file with retry - using minimal headers for CDN compatibility"""
         for attempt in range(self.max_retries):
@@ -533,6 +657,96 @@ If you found this tool useful, please consider starring the repository on GitHub
         return False
 
 
+    def clean_html(self, html_content: str) -> str:
+        """Remove HTML tags from content and return plain text"""
+        if not html_content:
+            return ""
+        
+        # Remove HTML tags
+        clean = re.sub(r'<[^>]+>', ' ', html_content)
+        # Remove extra whitespace
+        clean = re.sub(r'\s+', ' ', clean)
+        # Remove HTML entities
+        clean = re.sub(r'&[a-z]+;', ' ', clean, flags=re.IGNORECASE)
+        # Trim and clean up
+        clean = clean.strip()
+        # Fix multiple spaces
+        clean = re.sub(r'\s+', ' ', clean)
+        
+        return clean
+    
+    def create_course_description_file(self, course_info: Dict, course_dir: Path):
+        """Create a formatted description file for the course"""
+        name = course_info.get('name', 'No Title')
+        description = course_info.get('description', 'No description')
+        content = course_info.get('content', '')
+        
+        # Clean HTML content
+        clean_content = self.clean_html(content) if content else ""
+        
+        description_path = course_dir / "Description.txt"
+        
+        with open(description_path, 'w', encoding='utf-8') as f:
+            f.write(f"{'='*70}\n")
+            f.write(f"{name}\n")
+            f.write(f"{'='*70}\n\n")
+            
+            f.write(f"DESCRIPTION:\n")
+            f.write(f"{'-'*40}\n")
+            f.write(f"{description}\n\n")
+            
+            if clean_content:
+                f.write(f"CONTENT:\n")
+                f.write(f"{'-'*40}\n")
+                f.write(f"{clean_content}\n\n")
+            
+            # Add course metadata
+            f.write(f"COURSE INFORMATION:\n")
+            f.write(f"{'-'*40}\n")
+            f.write(f"ID: {course_info.get('id', 'N/A')}\n")
+            f.write(f"Priority: {course_info.get('priority', 'N/A')}\n")
+            f.write(f"State: {course_info.get('state', 'N/A')}\n")
+            if course_info.get('thumbnailUrl'):
+                f.write(f"Thumbnail URL: {course_info.get('thumbnailUrl')}\n")
+            
+            f.write(f"\n{'='*70}\n")
+        
+        color_print(f"  [+] Created course description file", Colors.GREEN)
+
+    def create_chapter_description_file(self, chapter_info: Dict, chapter_dir: Path, chapter_idx: int):
+        """Create a formatted description file for the chapter"""
+        name_raw = chapter_info.get('name', f'Chapter_{chapter_idx}')
+        # Clean the name from "Modul X | " pattern if present
+        name = re.sub(r'^Modul\s+\d+\s*\|\s*', '', name_raw)
+        description = chapter_info.get('description', 'No description')
+        
+        description_path = chapter_dir / "Description.txt"
+        
+        with open(description_path, 'w', encoding='utf-8') as f:
+            f.write(f"{'='*70}\n")
+            f.write(f"{name}\n")
+            f.write(f"{'='*70}\n\n")
+            
+            f.write(f"DESCRIPTION:\n")
+            f.write(f"{'-'*40}\n")
+            f.write(f"{description}\n\n")
+            
+            # Add chapter metadata
+            f.write(f"CHAPTER INFORMATION:\n")
+            f.write(f"{'-'*40}\n")
+            f.write(f"ID: {chapter_info.get('id', 'N/A')}\n")
+            f.write(f"Priority: {chapter_info.get('priority', 'N/A')}\n")
+            f.write(f"State: {chapter_info.get('state', 'N/A')}\n")
+            f.write(f"Number of Lessons: {chapter_info.get('numberOfActivePosts', 0)}\n")
+            f.write(f"Total Video Time: {self.format_time(chapter_info.get('videoTime', 0))}\n")
+            
+            if chapter_info.get('thumbnailUrl'):
+                f.write(f"Thumbnail URL: {chapter_info.get('thumbnailUrl')}\n")
+            
+            f.write(f"\n{'='*70}\n")
+        
+        return True
+
     def dump_chapter(self, course_id: str, chapter_info: Dict, course_dir: Path, chapter_idx: int):
         """Dump a chapter using the chapter details API"""
         # Format chapter name: "1. Modul 1 - Einführung und Mindset"
@@ -546,11 +760,17 @@ If you found this tool useful, please consider starring the repository on GitHub
         
         # Get full chapter details with all posts
         chapter_details = self.get_chapter_details(course_id, chapter_info['id'])
-        
+
         if not chapter_details:
             color_print(f"    [!] Could not get chapter details", Colors.RED)
             return
-        
+
+        # Download chapter thumbnail
+        self.download_chapter_thumbnail(chapter_info, chapter_dir, chapter_idx)
+
+        # Create chapter description file
+        self.create_chapter_description_file(chapter_info, chapter_dir, chapter_idx)
+
         # Get active posts
         active_posts = chapter_details.get('activePosts', [])
         
@@ -578,9 +798,11 @@ If you found this tool useful, please consider starring the repository on GitHub
         # Update progress
         progress.update(chapter=chapter_folder[:50])
         
-        for post_idx, post in enumerate(active_posts, 1):
+        for post_idx, post in enumerate(active_posts, 1):#
             lesson_name_raw = post.get('name', f'Lesson_{post_idx}')
             lesson_name = sanitize_name(lesson_name_raw)
+            lesson_name = sanitize_name(lesson_name)
+
             
             # Create filename with number and name: "1. Lesson Name.mp4"
             video_filename = f"{post_idx}. {lesson_name}.mp4"
@@ -643,6 +865,7 @@ If you found this tool useful, please consider starring the repository on GitHub
                 # Sanitize filename and download
                 original_name = sanitize_name(original_name)
                 attachment_filename = f"{post_idx}. {lesson_name}_{original_name}"
+
                 attachment_path = chapter_dir / attachment_filename
                 
                 # Check if file already exists
@@ -725,6 +948,9 @@ If you found this tool useful, please consider starring the repository on GitHub
         
         # Download course thumbnail
         self.download_course_thumbnail(course_info, course_dir)
+
+        # Create course description file
+        self.create_course_description_file(course_info, course_dir)
         
         # Create credits file
         self.create_credits_file(course_dir)
