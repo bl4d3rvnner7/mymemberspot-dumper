@@ -27,6 +27,7 @@ Perfect for offline learning, archiving, or personal backup.
 - [🚀 Features](#-features)
 - [📦 Requirements](#-requirements)
 - [⚙️ Installation](#️-installation)
+- [📝 Todo](#-todo)
 - [🚀 Usage](#-usage)
   - [Basic Usage](#basic-usage)
   - [Dump Specific Course](#dump-specific-course)
@@ -116,6 +117,15 @@ python3 dumper.py --email your@email.com --password yourpassword
 ```
 
 ---
+
+## 📝 Todo
+
+- [ ] Implement resume functionality for interrupted downloads
+- [ ] Add option to download only specific chapters
+- [ ] Add progress bar for overall course download
+- [ ] Implement token auto-refresh on 403 errors
+- [x] Add option to skip already downloaded files (resume support)
+- [ ] Implement download speed limiting option
 
 ## 🚀 Usage
 
