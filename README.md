@@ -97,7 +97,7 @@ Also requires **ffmpeg** (optional, for fallback) and **yt-dlp** for video downl
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/mymemberspot-dumper.git
+git clone https://github.com/bl4d3rvnner7/mymemberspot-dumper.git
 cd mymemberspot-dumper
 
 # Install dependencies
