@@ -1,0 +1,13 @@
+{
+  "api_base": "https://client-api.memberspot.de",
+  "firebase_api_key": "",
+  "tenant_id": "",
+  "school_id": "",
+  "base_url": "https://machinsalesacademy.mymemberspot.de",
+  "app_version": "2026-04-02-2110/server-client-frontend",
+  "app": "client",
+  "ytdlp_threads": 4,
+  "download_delay": 0.3,
+  "chapter_delay": 1,
+  "course_delay": 2
+}
