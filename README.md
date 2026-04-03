@@ -225,24 +225,39 @@ The tool creates a `config.json` file on first run with the following structure:
   "ytdlp_threads": 4,
   "download_delay": 0.3,
   "chapter_delay": 1,
-  "course_delay": 2
+   "course_delay": 2,
+  "chapter_limit": 100,
+  "download_until_limit": true,
+  "max_retries": 3,
+  "retry_delay": 5,
+  "ytdlp_retries": 10,
+  "ytdlp_fragment_retries": 10,
+  "debug": false
 }
 ```
 
 ### Configuration Options
 
-| Option              | Description                                    | Default |
-| ------------------- | ---------------------------------------------- | ------- |
-| `api_base`          | Memberspot API endpoint                        | `https://client-api.memberspot.de` |
-| `firebase_api_key`  | Firebase API key for authentication            | (provided) |
-| `tenant_id`         | Your tenant ID                                 | (provided) |
-| `school_id`         | Your school ID                                 | (provided) |
-| `base_url`          | Your memberspot site URL                       | (provided) |
-| `app_version`       | App version header                             | latest |
-| `ytdlp_threads`     | Number of threads for yt-dlp                   | `4` |
-| `download_delay`    | Delay between lesson downloads (seconds)       | `0.3` |
-| `chapter_delay`     | Delay between chapters (seconds)               | `1` |
-| `course_delay`      | Delay between courses (seconds)                | `2` |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `api_base` | Memberspot API endpoint | `https://client-api.memberspot.de` |
+| `firebase_api_key` | Firebase API key for authentication | (provided) |
+| `tenant_id` | Your tenant ID | (provided) |
+| `school_id` | Your school ID | (provided) |
+| `base_url` | Your memberspot site URL | (provided) |
+| `app_version` | App version header | `2026-04-02-2110/server-client-frontend` |
+| `app` | App identifier header | `client` |
+| `ytdlp_threads` | Number of threads for yt-dlp | `4` |
+| `download_delay` | Delay between lesson downloads (seconds) | `0.3` |
+| `chapter_delay` | Delay between chapters (seconds) | `1` |
+| `course_delay` | Delay between courses (seconds) | `2` |
+| `chapter_limit` | Maximum lessons per chapter (`0` = unlimited) | `50` |
+| `download_until_limit` | Download first N lessons if exceeded (`true`) or skip chapter (`false`) | `true` |
+| `max_retries` | Maximum number of retry attempts for failed downloads | `3` |
+| `retry_delay` | Delay between retry attempts (seconds) | `5` |
+| `ytdlp_retries` | Number of retries for yt-dlp video download | `10` |
+| `ytdlp_fragment_retries` | Number of retries for HLS fragment downloads | `10` |
+| `debug` | Enable debug output with detailed logging | `false` |
 
 ---
 
