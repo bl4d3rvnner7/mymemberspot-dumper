@@ -61,16 +61,25 @@ Perfect for offline learning, archiving, or personal backup.
 
 ## 🚀 Features
 
-🔐 **Automatic Authentication** - Login via email/password with Firebase Auth<br>
-📚 **Full Course Structure** - Preserves chapters, modules, and lesson hierarchy<br>
-🎥 **Video Download** - Downloads HLS streams (.m3u8) using yt-dlp with multi-threading<br>
-📎 **Attachment Support** - Downloads all PDFs and file attachments<br>
-📝 **Metadata Preservation** - Saves lesson descriptions and content as text files<br>
-🎨 **Colored Output** - Beautiful terminal output with progress indicators<br>
-⚙️ **Configurable** - Easy configuration via JSON file<br>
-🚀 **Multi-threaded** - Fast parallel downloads with yt-dlp (configurable threads)<br>
-📁 **Clean Organization** - Automatic folder structure with numbered lessons<br>
-🔄 **Resume Support** - Can resume interrupted downloads<br>
+## ✨ Features
+
+- **Complete Course Download** - Download entire courses with videos and all materials
+- **Course Thumbnails** - Saves course cover images to the root folder
+- **Credits File** - Creates credits.txt with tool info, GitHub link, and download timestamp
+- **Smart Link Detection** - Intelligently detects files vs web links (saves .url files for links)
+- **Improved Error Handling** - Better 403 response handling with fallback mechanisms
+- **Progress Tracking** - Real-time progress bars for downloads
+- **Chapter Limits** - Configurable limits to avoid downloading huge chapters
+- **Resume Capability** - Skips already downloaded files automatically
+- **Metadata Preservation** - Saves video descriptions and content as separate files
+- **Auto Authentication** - Login via email/password with Firebase Auth
+- **Clean Organization** - Preserves chapters, modules, and lesson hierarchy
+- **Video Download** - Downloads HLS streams (.m3u8) using yt-dlp
+- **Attachment Support** - Downloads all PDFs and file attachments
+- **Colored Output** - Beautiful terminal output with progress indicators
+- **Configurable** - Easy configuration via JSON file
+- **Multi-threaded** - Fast parallel downloads with yt-dlp
+- **Resume Support** - Can resume interrupted downloads
 
 ---
 
