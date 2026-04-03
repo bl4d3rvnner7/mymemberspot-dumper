@@ -151,17 +151,28 @@ python3 dumper.py --email your@email.com --password yourpassword --config myconf
 
 This tool automatically generates:
 
-| File / Folder                    | Description                              |
-| -------------------------------- | ---------------------------------------- |
-| `Course Name/`                   | Main course folder                       |
-| `├── README.md`                  | Course overview with description         |
-| `├── 01_Chapter Name/`           | Chapter folder with numbered prefix      |
-| `│   ├── 1. Lesson Name.mp4`     | Video lesson with proper naming          |
-| `│   ├── 1. Lesson Name.txt`     | Lesson description as text               |
-| `│   ├── 2. Lesson Name.mp4`     | Next video lesson                        |
-| `│   ├── 2. Lesson Name.txt`     | Next lesson description                  |
-| `│   └── 3. Lesson Name.pdf`     | Attached PDF file                        |
-| `└── 02_Another Chapter/`        | Next chapter folder                      |
+| File / Folder                                | Description                                          |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `Course Name/`                               | Main course folder                                   |
+| `├── course_thumbnail.jpg`                   | Course cover image                                   |
+| `├── Description.txt`                        | Course name, description & cleaned content           |
+| `├── credits.txt`                            | Tool attribution & GitHub link                       |
+| `├── README.md`                              | Course overview with description & metadata          |
+| `├── 01_Chapter Name/`                       | Chapter folder with numbered prefix                  |
+| `│   ├── chapter_thumbnail.jpg`              | Chapter cover image                                  |
+| `│   ├── Description.txt`                    | Chapter description & metadata                       |
+| `│   ├── 1. Lesson Name.mp4`                 | Video lesson with proper naming                      |
+| `│   ├── 1. Lesson Name.txt`                 | Lesson description as text                           |
+| `│   ├── 1. Lesson Name_content.html`        | Lesson HTML content (if available)                   |
+| `│   ├── 1. Lesson Name_filename.pdf`        | Attached PDF file                                    |
+| `│   ├── 1. Lesson Name_link.url`            | External link saved as URL shortcut                  |
+| `│   ├── 2. Lesson Name.mp4`                 | Next video lesson                                    |
+| `│   ├── 2. Lesson Name.txt`                 | Next lesson description                              |
+| `│   └── 3. Lesson Name.pdf`                 | Attached file to third lesson                        |
+| `└── 02_Another Chapter/`                    | Next chapter folder                                  |
+| `    ├── chapter_thumbnail.jpg`              | Another chapter thumbnail                            |
+| `    ├── Description.txt`                    | Another chapter description                          |
+| `    └── ...`                                | Continue with lessons and files                      |
 
 ### Text File Format
 
