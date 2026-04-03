@@ -1,13 +1,20 @@
 {
   "api_base": "https://client-api.memberspot.de",
-  "firebase_api_key": "",
-  "tenant_id": "",
-  "school_id": "",
-  "base_url": "https://machinsalesacademy.mymemberspot.de",
+  "firebase_api_key": "AIzaSyBsOSvyKi9LaUCQQSdFR3e3G_HEJanqDZ0",
+  "tenant_id": "s-Dzu60BcyBoIQcwd-7cjyl",
+  "school_id": "Dzu60BcyBoIQcwd6vKxV",
+  "base_url": "https://geldhelden.mymemberspot.de",
   "app_version": "2026-04-02-2110/server-client-frontend",
   "app": "client",
-  "ytdlp_threads": 4,
+  "ytdlp_threads": 6,
   "download_delay": 0.3,
   "chapter_delay": 1,
-  "course_delay": 2
+  "course_delay": 2,
+  "chapter_limit": 100,
+  "download_until_limit": true,
+  "max_retries": 3,
+  "retry_delay": 5,
+  "ytdlp_retries": 10,
+  "ytdlp_fragment_retries": 10,
+  "debug": false
 }
