@@ -1,0 +1,6 @@
+downloads/
+config.json
+__pycache__/
+*.pyc
+*.log
+.DS_Store
