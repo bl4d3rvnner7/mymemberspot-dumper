@@ -45,7 +45,6 @@ Perfect for offline learning, archiving, or personal backup.
   - [Step 3: Get school_id](#step-3-get-school_id)
   - [Step 4: Get base_url](#step-4-get-base_url)
   - [Complete Example Configuration](#complete-example-configuration)
-  - [Video Tutorial](#video-tutorial)
   - [Troubleshooting Extraction](#troubleshooting-extraction)
   - [Security Note](#security-note)
 - [🧠 Internals & How It Works](#-internals--how-it-works)
