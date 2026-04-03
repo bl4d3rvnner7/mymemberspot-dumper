@@ -5,10 +5,10 @@
 ![Tested](https://img.shields.io/badge/Tested-Multiple%20Courses-brightgreen?style=for-the-badge)
 ![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-blueviolet?style=for-the-badge)
 
-![GitHub Stars](https://img.shields.io/github/stars/YOUR_USERNAME/mymemberspot-dumper?style=for-the-badge)
-![GitHub Forks](https://img.shields.io/github/forks/YOUR_USERNAME/mymemberspot-dumper?style=for-the-badge)
-![GitHub Issues](https://img.shields.io/github/issues/YOUR_USERNAME/mymemberspot-dumper?style=for-the-badge)
-![GitHub Last Commit](https://img.shields.io/github/last-commit/YOUR_USERNAME/mymemberspot-dumper?style=for-the-badge)
+![GitHub Stars](https://img.shields.io/github/stars/bl4d3rvnner7/mymemberspot-dumper?style=for-the-badge)
+![GitHub Forks](https://img.shields.io/github/forks/bl4d3rvnner7/mymemberspot-dumper?style=for-the-badge)
+![GitHub Issues](https://img.shields.io/github/issues/bl4d3rvnner7/mymemberspot-dumper?style=for-the-badge)
+![GitHub Last Commit](https://img.shields.io/github/last-commit/bl4d3rvnner7/mymemberspot-dumper?style=for-the-badge)
 
 ---
 
@@ -451,6 +451,6 @@ It motivates further updates and improvements.
 
 ## 🔗 Links
 
-- [Report Bug](https://github.com/YOUR_USERNAME/mymemberspot-dumper/issues)
-- [Request Feature](https://github.com/YOUR_USERNAME/mymemberspot-dumper/issues)
-- [Documentation](https://github.com/YOUR_USERNAME/mymemberspot-dumper/wiki)
+- [Report Bug](https://github.com/bl4d3rvnner7/mymemberspot-dumper/issues)
+- [Request Feature](https://github.com/bl4d3rvnner7/mymemberspot-dumper/issues)
+- [Documentation](https://github.com/bl4d3rvnner7/mymemberspot-dumper/wiki)
