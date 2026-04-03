@@ -20,6 +20,7 @@ class Colors:
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
+    WHITE = '\033[97m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
@@ -30,6 +31,36 @@ class Colors:
 def color_print(text, color=Colors.RESET, bold=False):
     prefix = Colors.BOLD if bold else ""
     print(f"{prefix}{color}{text}{Colors.RESET}")
+
+def print_banner():
+    """Print a clean ASCII art banner"""
+    banner = f"""
+{Colors.CYAN}{Colors.BOLD}
+    ███╗   ███╗██╗   ██╗███╗   ███╗███████╗██████╗ ███████╗██████╗ ██████╗ ████████╗
+    ████╗ ████║╚██╗ ██╔╝████╗ ████║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚══██╔══╝
+    ██╔████╔██║ ╚████╔╝ ██╔████╔██║█████╗  ██████╔╝███████╗██████╔╝██████╔╝   ██║   
+    ██║╚██╔╝██║  ╚██╔╝  ██║╚██╔╝██║██╔══╝  ██╔══██╗╚════██║██╔═══╝ ██╔══██╗   ██║   
+    ██║ ╚═╝ ██║   ██║   ██║ ╚═╝ ██║███████╗██║  ██║███████║██║     ██║  ██║   ██║   
+    ╚═╝     ╚═╝   ╚═╝   ╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝   ╚═╝   
+
+                    ██████╗ ██╗   ██╗███╗   ███╗██████╗ ███████╗██████╗                    
+                    ██╔══██╗██║   ██║████╗ ████║██╔══██╗██╔════╝██╔══██╗                   
+                    ██║  ██║██║   ██║██╔████╔██║██████╔╝█████╗  ██████╔╝                   
+                    ██║  ██║██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══╝  ██╔══██╗                   
+                    ██████╔╝╚██████╔╝██║ ╚═╝ ██║██║     ███████╗██║  ██║                   
+                    ╚═════╝  ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝                   
+
+        {Colors.RESET}
+        {Colors.DIM}┌─────────────────────────────────────────────────────────────────────────────┐
+        │                                                                             │
+        │  Author  : bl4d3rvnner7                                                     │
+        │  GitHub  : https://github.com/bl4d3rvnner7/mymemberspot-dumper              │
+        │  License : MIT                                                              │
+        │                                                                             │
+        └─────────────────────────────────────────────────────────────────────────────┘{Colors.RESET}
+"""
+    print(banner)
+
 
 def sanitize_name(name):
     """Replace unsafe characters in filenames and folder names."""
@@ -427,6 +458,7 @@ class MemberspotDumper:
 
 
 def main():
+    print_banner()
     import argparse
     
     parser = argparse.ArgumentParser(description='Dump courses from mymemberspot.de')
