@@ -7,6 +7,7 @@ Uses the chapter API endpoint that returns all posts with video URLs
 import requests
 import json
 import os
+import uuid
 import time
 import subprocess
 import re
@@ -84,6 +85,55 @@ def sanitize_name(name):
     
     # Trim spaces and dots to prevent Windows issues (e.g., "file .txt")
     return name.strip().rstrip('.')
+
+class VimeoDownloader:
+    def __init__(self, url, referer, debug):
+        self.url = url
+        self.referer = referer
+        self.debug = debug
+        self.video_id = self.extract_id()
+
+    def extract_id(self):
+        match = re.search(r'vimeo\.com/(?:video/)?(\d+)', self.url)
+        if not match:
+            raise ValueError("Invalid Vimeo URL")
+        return match.group(1)
+
+    def get_player_url(self):
+        try:
+            oembed_url = f"https://vimeo.com/api/oembed.json?url=https://vimeo.com/{self.video_id}?share=copy&speed=true"
+            origin = self.referer.rstrip('/')
+            headers = {
+                "User-Agent": "Mozilla/5.0",
+                "Referer": self.referer,
+                "Origin": origin
+            }
+            r = requests.get(oembed_url, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            if self.debug:
+                print(data)
+            iframe = data["html"]
+            player_url = re.search(r'src="([^"]+)"', iframe).group(1)
+            return player_url
+        except Exception as e:
+            if self.debug:
+                print(f"[Vimeo ERROR] {str(e)}")
+            return None
+
+
+    def download(self, cmd):
+        player_url = self.get_player_url()
+        cmd[-1] = player_url
+        cmd += [
+            "--add-header", f"Referer: {self.referer}",
+            "--add-header", f"Origin: {self.referer.rstrip('/')}"
+        ]
+        if self.debug:
+            print(cmd)
+        return subprocess.run(cmd)
+
+
 
 class ProgressTracker:
     def __init__(self):
@@ -439,7 +489,78 @@ If you found this tool useful, please consider starring the repository on GitHub
         if self.debug:
             color_print(msg, color)
 
-    
+
+    def download_external_video(self, url: str, output_path: Path, lesson_name: str):
+        ytdlp = shutil.which('yt-dlp')
+        if not ytdlp:
+            color_print(f"        [!] yt-dlp not found", Colors.RED)
+            return False
+
+        if "vimeo.com" in url:
+            color_print(f"        [*] External video (Vimeo)", Colors.CYAN)
+            downloader = VimeoDownloader(
+                url=url,
+                referer=self.config.get("base_url", ""),
+                debug=self.debug
+            )
+
+            temp_output = output_path.parent / f".tmp_{uuid.uuid4().hex}.mp4"
+
+            cmd = [
+                ytdlp,
+                '-N', str(self.config.get("ytdlp_threads", 4)),
+                '-o', str(temp_output),
+                '--retries', str(self.config.get("ytdlp_retries", 10)),
+                '--fragment-retries', str(self.config.get("ytdlp_fragment_retries", 10)),
+                '--skip-unavailable-fragments',
+                '--concurrent-fragments', '5',
+                '--geo-bypass',
+                '--quiet',
+                '--no-progress',
+                '--hls-use-mpegts',
+                url
+            ]
+
+            start_time = time.time()
+
+            try:
+                result = downloader.download(cmd)
+                elapsed = time.time() - start_time
+
+                if result.returncode == 0 and temp_output.exists() and temp_output.stat().st_size > 0:
+                    try:
+                        shutil.move(str(temp_output), str(output_path))
+
+                        size_mb = output_path.stat().st_size / (1024 * 1024)
+                        color_print(f"        [+] Done: {output_path.name} ({size_mb:.2f} MB) in {elapsed:.1f}s", Colors.GREEN)
+                        return True
+
+                    except Exception as e:
+                        color_print(f"        [!] Move failed: {e}", Colors.RED)
+                        return False
+                else:
+                    color_print(f"        [!] External download failed", Colors.RED)
+                    return False
+
+            finally:
+                if temp_output.exists():
+                    try:
+                        temp_output.unlink()
+                    except:
+                        pass
+
+        color_print(f"        [*] External video (generic)", Colors.CYAN)
+
+        cmd = [
+            ytdlp,
+            '-o', str(output_path),
+            url
+        ]
+
+        result = subprocess.run(cmd)
+
+        return result.returncode == 0 and output_path.exists()
+        
     def download_video(self, video_info: Dict, output_path: Path, lesson_num: int, lesson_name: str):
         """Download video using HLS with safe temp file handling"""
 
@@ -474,7 +595,6 @@ If you found this tool useful, please consider starring the repository on GitHub
             return False
 
         # STEP 5: Temp file (SAFE!)
-        import uuid
         temp_output = output_path.parent / f".tmp_{uuid.uuid4().hex}.mp4"
 
         # STEP 6: Build command
@@ -803,7 +923,7 @@ If you found this tool useful, please consider starring the repository on GitHub
             lesson_name = sanitize_name(lesson_name_raw)
             lesson_name = sanitize_name(lesson_name)
 
-            
+            self.debug_print(post, Colors.BLUE)
             # Create filename with number and name: "1. Lesson Name.mp4"
             video_filename = f"{post_idx}. {lesson_name}.mp4"
             video_path = chapter_dir / video_filename
@@ -836,8 +956,11 @@ If you found this tool useful, please consider starring the repository on GitHub
             
             # Download video if present with retry
             video_info = post.get('video')
-            if video_info and video_info.get('hlsSrc'):
-                self.download_video_with_retry(video_info, video_path, post_idx, lesson_name)
+            if video_info:
+                if video_info.get('hlsSrc'):
+                    self.download_video_with_retry(video_info, video_path, post_idx, lesson_name)
+                elif video_info.get('isExternal') and video_info.get('link'):
+                    self.download_external_video(video_info['link'], video_path, lesson_name)
             
             # Download file attachments (PDFs, etc.)
             files = post.get('files', {})
@@ -1053,7 +1176,7 @@ def main():
     parser.add_argument('--email', '-e', required=True, help='Login email')
     parser.add_argument('--password', '-p', required=True, help='Login password')
     parser.add_argument('--output', '-o', default='downloads', help='Output directory')
-    parser.add_argument('--course-id', help='Dump only specific course ID')
+    parser.add_argument('--course-id', help='Dump only specific course ID') # works with --course too
     parser.add_argument('--config', '-c', default='config.json', help='Config file path')
     parser.add_argument('--list', '-l', action='store_true', help='List all courses with stats and exit')
     
