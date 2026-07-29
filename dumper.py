@@ -1047,14 +1047,12 @@ class MemberspotDumper:
             soup = BeautifulSoup(html_content, 'html.parser')
             attachments = []
             seen_urls = set()
-            
             for container in soup.find_all('mspot-file-attachments-list'):
                 for link in container.find_all('a', href=True):
                     href = link.get('href')
                     if not href or href in seen_urls:
                         continue
                     seen_urls.add(href)
-                    
                     name = link.get_text(strip=True)
                     if not name:
                         img = link.find('img')
@@ -1062,15 +1060,14 @@ class MemberspotDumper:
                             name = img.get('alt')
                         else:
                             name = f"attachment_{len(attachments)+1}"
-                    
                     is_download = link.get('download') is not None or 'files.mspotcdn.de' in href
-                    
                     is_file = any(href.lower().endswith(ext) for ext in ['.zip', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.mp3', '.mp4'])
-                    
                     size_text = ""
                     size_elem = link.find_parent().find('div', class_=lambda x: x and 'text-text-default' in x) if link.find_parent() else None
                     if size_elem:
                         size_text = size_elem.get_text(strip=True)
+                    name = re.sub(r'\s*[\d.]+\s*(GB|MB|KB)\s*$', '', name, flags=re.IGNORECASE).strip()
+                    name = re.sub(r'\s*\([\d.]+\s*(GB|MB|KB)\)\s*$', '', name, flags=re.IGNORECASE).strip()
                     
                     attachments.append({
                         'url': href,
@@ -1079,7 +1076,6 @@ class MemberspotDumper:
                         'size': size_text,
                         'is_file': is_file or 'files.mspotcdn.de' in href
                     })
-                
                 for btn in container.find_all('mspot-download-button'):
                     link = btn.find('a', href=True)
                     if not link:
@@ -1089,7 +1085,6 @@ class MemberspotDumper:
                     if not href or href in seen_urls:
                         continue
                     seen_urls.add(href)
-                    
                     name = link.get_text(strip=True)
                     if not name:
                         img = link.find('img')
@@ -1100,11 +1095,12 @@ class MemberspotDumper:
                     
                     is_download = link.get('download') is not None or 'files.mspotcdn.de' in href
                     is_file = any(href.lower().endswith(ext) for ext in ['.zip', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.mp3', '.mp4'])
-                    
                     size_text = ""
                     size_elem = btn.find('div', class_=lambda x: x and 'text-text-default' in x)
                     if size_elem:
                         size_text = size_elem.get_text(strip=True)
+                    name = re.sub(r'\s*[\d.]+\s*(GB|MB|KB)\s*$', '', name, flags=re.IGNORECASE).strip()
+                    name = re.sub(r'\s*\([\d.]+\s*(GB|MB|KB)\)\s*$', '', name, flags=re.IGNORECASE).strip()
                     
                     attachments.append({
                         'url': href,
@@ -1113,20 +1109,52 @@ class MemberspotDumper:
                         'size': size_text,
                         'is_file': is_file or 'files.mspotcdn.de' in href
                     })
+            for btn in soup.find_all('mspot-download-button'):
+                link = btn.find('a', href=True)
+                if not link:
+                    continue
+                    
+                href = link.get('href')
+                if not href or href in seen_urls:
+                    continue
+                seen_urls.add(href)
+                name = link.get_text(strip=True)
+                if not name:
+                    img = link.find('img')
+                    if img and img.get('alt'):
+                        name = img.get('alt')
+                    else:
+                        name = f"attachment_{len(attachments)+1}"
+                
+                is_download = link.get('download') is not None or 'files.mspotcdn.de' in href
+                is_file = any(href.lower().endswith(ext) for ext in ['.zip', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.mp3', '.mp4'])
+                size_text = ""
+                size_elem = btn.find('div', class_=lambda x: x and 'text-text-default' in x)
+                if size_elem:
+                    size_text = size_elem.get_text(strip=True)
+                name = re.sub(r'\s*[\d.]+\s*(GB|MB|KB)\s*$', '', name, flags=re.IGNORECASE).strip()
+                name = re.sub(r'\s*\([\d.]+\s*(GB|MB|KB)\)\s*$', '', name, flags=re.IGNORECASE).strip()
+                
+                attachments.append({
+                    'url': href,
+                    'name': name,
+                    'is_download': is_download or is_file,
+                    'size': size_text,
+                    'is_file': is_file or 'files.mspotcdn.de' in href
+                })
             
             return attachments
             
         except Exception as e:
             self.debug_print(f"        [!] Error extracting attachments from HTML: {e}", Colors.YELLOW)
             return []
-
+        
     def download_lesson_attachments(self, post_id: str, chapter_dir: Path, post_idx: int, lesson_name: str, course_id: str = None, chapter_id: str = None):
         """Download attachments by fetching the lesson HTML page"""
         html_content = self.get_lesson_page_html_playwright(post_id, course_id, chapter_id)
         if not html_content:
             tqdm.write(f"        [!] Could not fetch lesson page for attachments")
             return
-        
         attachments = self.extract_attachments_from_html_page(html_content)
         
         if not attachments:
@@ -1141,23 +1169,20 @@ class MemberspotDumper:
             is_download = attachment['is_download']
             size_text = attachment.get('size', '')
             is_file = attachment.get('is_file', False)
-            
             clean_name = sanitize_name(name)
             clean_name = re.sub(r'\s*Link\s*$', '', clean_name, flags=re.IGNORECASE)
             clean_name = re.sub(r'\s*\(Link\)\s*$', '', clean_name, flags=re.IGNORECASE)
+            clean_name = re.sub(r'\s*[\d.]+\s*(GB|MB|KB)\s*$', '', clean_name, flags=re.IGNORECASE)
             clean_name = clean_name.strip()
             
             if not clean_name:
                 clean_name = f"attachment_{post_idx}_{len(attachments)}"
-            
             if 'docs.google.com' in url:
                 is_download = False
                 is_file = False
-            
             if 'webinar' in url or 'utm_source' in url:
                 is_download = False
                 is_file = False
-            
             if 'files.mspotcdn.de' in url:
                 is_download = True
                 is_file = True
@@ -1176,7 +1201,7 @@ class MemberspotDumper:
                     ext = '.zip'
                 elif 'pdf' in url.lower() or '.pdf' in url.lower():
                     ext = '.pdf'
-                elif 'doc' in url.lower() or '.docx' in url.lower():
+                elif 'docx' in url.lower() or '.docx' in url.lower():
                     ext = '.docx'
                 elif 'mp3' in url.lower() or '.mp3' in url.lower():
                     ext = '.mp3'
@@ -1185,8 +1210,11 @@ class MemberspotDumper:
                 
                 if not ext:
                     ext = '.bin'
+                if clean_name.lower().endswith(ext.lower()):
+                    attachment_filename = f"{post_idx}. {clean_name}"
+                else:
+                    attachment_filename = f"{post_idx}. {clean_name}{ext}"
                 
-                attachment_filename = f"{post_idx}. {clean_name}{ext}"
                 attachment_path = chapter_dir / attachment_filename
                 if attachment_path.exists() and attachment_path.stat().st_size > 1000:
                     size_mb = attachment_path.stat().st_size / (1024 * 1024)
@@ -1195,6 +1223,7 @@ class MemberspotDumper:
                 tqdm.write(f"        [*] Downloading: {attachment_filename}{' (' + size_text + ')' if size_text else ''}")
                 self.download_file_with_retry(url, attachment_path)
             else:
+                clean_name = re.sub(r'\s*[\d.]+\s*(GB|MB|KB)\s*$', '', clean_name, flags=re.IGNORECASE)
                 clean_name = re.sub(r'\s*Link\s*$', '', clean_name, flags=re.IGNORECASE)
                 clean_name = clean_name.strip()
                 link_filename = f"{post_idx}. {clean_name}.url"
@@ -1549,10 +1578,13 @@ If you found this tool useful, please consider starring the repository on GitHub
                                 ext = '.' + download_url.split('/')[-1].split('.')[-1].split('?')[0]
                             if not ext:
                                 ext = '.bin'
+                            if clean_name.lower().endswith(ext.lower()):
+                                attachment_filename = f"{post_idx}. {clean_name}"
+                            else:
+                                attachment_filename = f"{post_idx}. {clean_name}{ext}"
                             
-                            attachment_filename = f"{post_idx}. {clean_name}{ext}"
                             attachment_path = chapter_dir / attachment_filename
-                            
+                 
                             if attachment_path.exists() and attachment_path.stat().st_size > 1000:
                                 size_mb = attachment_path.stat().st_size / (1024 * 1024)
                                 tqdm.write(f"        [✓] Already downloaded: {attachment_path.name} ({size_mb:.2f} MB)")
