@@ -1,7 +1,8 @@
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=blue)
+![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
 ![Code Style: Black](https://img.shields.io/badge/Code%20Style-Black-black?style=for-the-badge)
-![Dependencies](https://img.shields.io/badge/Dependencies-yt--dlp%20%7C%20requests%20%7C%20brotli%20%7C%20colorama-blue?style=for-the-badge)
-![Output](https://img.shields.io/badge/Output-Video%20%7C%20Transcript%20%7C%20PDF-orange?style=for-the-badge)
+![Dependencies](https://img.shields.io/badge/Dependencies-yt--dlp%20%7C%20requests%20%7C%20beautifulsoup4%20%7C%20playwright-blue?style=for-the-badge)
+![Output](https://img.shields.io/badge/Output-Video%20%7C%20Transcript%20%7C%20PDF%20%7C%20Links-orange?style=for-the-badge)
 ![Tested](https://img.shields.io/badge/Tested-Multiple%20Courses-brightgreen?style=for-the-badge)
 ![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-blueviolet?style=for-the-badge)
 
@@ -12,7 +13,7 @@
 
 ---
 
-# 🎓 MyMemberspot Course Dumper [BETA]
+# 🎓 MyMemberspot Course Dumper
 
 **Backup all your courses, videos, PDFs, and learning materials from any mymemberspot.de platform — all in one tool.**  
 Supports **all course formats**, **video lessons**, **PDF attachments**, **chapter structures**, and **full metadata preservation**.  
@@ -62,25 +63,27 @@ Perfect for offline learning, archiving, or personal backup.
 
 ## 🚀 Features
 
-## ✨ Features
-
 - **Complete Course Download** - Download entire courses with videos and all materials
+- **JavaScript Rendering** - Uses Playwright to handle modern JavaScript-rendered content
+- **Headless/Visible Mode** - Run with or without visible browser window
+- **Smart File Detection** - Detects and downloads actual files from `files.mspotcdn.de` vs saving `.url` links
+- **DRM Detection** - Identifies DRM-protected content and provides helpful error messages
 - **Course Thumbnails** - Saves course cover images to the root folder
-- **Credits File** - Creates credits.txt with tool info, GitHub link, and download timestamp
-- **Smart Link Detection** - Intelligently detects files vs web links (saves .url files for links)
-- **Improved Error Handling** - Better 403 response handling with fallback mechanisms
+- **Chapter Thumbnails** - Saves chapter cover images
+- **Credits File** - Creates `credits.txt` with tool info, GitHub link, and download timestamp
+- **Smart Link Detection** - Intelligently detects files vs web links (saves `.url` files for links)
+- **Resume Capability** - Skips already downloaded files automatically
 - **Progress Tracking** - Real-time progress bars for downloads
 - **Chapter Limits** - Configurable limits to avoid downloading huge chapters
-- **Resume Capability** - Skips already downloaded files automatically
 - **Metadata Preservation** - Saves video descriptions and content as separate files
 - **Auto Authentication** - Login via email/password with Firebase Auth
 - **Clean Organization** - Preserves chapters, modules, and lesson hierarchy
-- **Video Download** - Downloads HLS streams (.m3u8) using yt-dlp
+- **Video Download** - Downloads HLS streams (`.m3u8`) using yt-dlp
 - **Attachment Support** - Downloads all PDFs and file attachments
 - **Colored Output** - Beautiful terminal output with progress indicators
 - **Configurable** - Easy configuration via JSON file
 - **Multi-threaded** - Fast parallel downloads with yt-dlp
-- **Resume Support** - Can resume interrupted downloads
+- **Persistent Session** - Login once with Playwright, reuse for all lessons
 
 ---
 
@@ -89,13 +92,9 @@ Perfect for offline learning, archiving, or personal backup.
 ```
 requests>=2.31.0
 yt-dlp>=2023.10.13
-brotli>=1.0.9
-```
-
-Install them via:
-
-```bash
-pip install -r requirements.txt
+beautifulsoup4>=4.12.0
+playwright>=1.40.0
+tqdm>=4.66.0
 ```
 
 Also requires **ffmpeg** (optional, for fallback) and **yt-dlp** for video downloads.
@@ -112,6 +111,9 @@ cd mymemberspot-dumper
 # Install dependencies
 pip install -r requirements.txt
 
+# Install Playwright browser
+playwright install chromium
+
 # Run the tool (first run creates config.json)
 python3 dumper.py --email your@email.com --password yourpassword
 ```
@@ -122,10 +124,13 @@ python3 dumper.py --email your@email.com --password yourpassword
 
 - [ ] Implement resume functionality for interrupted downloads
 - [ ] Add option to download only specific chapters
-- [ ] Add progress bar for overall course download
+- [ ] Add option to download only specific lessons
 - [ ] Implement token auto-refresh on 403 errors
-- [x] Add option to skip already downloaded files (resume support)
-- [ ] Implement download speed limiting option
+- [ ] Add download speed limiting option
+- [ ] Add GUI interface option
+- [ ] Support for batch processing multiple accounts
+
+---
 
 ## 🚀 Usage
 
@@ -153,6 +158,24 @@ python3 dumper.py --email your@email.com --password yourpassword --output /path/
 python3 dumper.py --email your@email.com --password yourpassword --config myconfig.json
 ```
 
+### Headless Mode (No Browser Window)
+
+```bash
+python3 dumper.py --email your@email.com --password yourpassword --headless
+```
+
+### Visible Browser (Debugging)
+
+```bash
+python3 dumper.py --email your@email.com --password yourpassword --no-headless --debug
+```
+
+### List Available Courses
+
+```bash
+python3 dumper.py --email your@email.com --password yourpassword --list
+```
+
 ---
 
 ## 📁 Output Overview
@@ -161,28 +184,38 @@ python3 dumper.py --email your@email.com --password yourpassword --config myconf
 
 This tool automatically generates:
 
-| File / Folder                                | Description                                          |
-| -------------------------------------------- | ---------------------------------------------------- |
-| `Course Name/`                               | Main course folder                                   |
-| `├── course_thumbnail.jpg`                   | Course cover image                                   |
-| `├── Description.txt`                        | Course name, description & cleaned content           |
-| `├── credits.txt`                            | Tool attribution & GitHub link                       |
-| `├── README.md`                              | Course overview with description & metadata          |
-| `├── 01_Chapter Name/`                       | Chapter folder with numbered prefix                  |
-| `│   ├── chapter_thumbnail.jpg`              | Chapter cover image                                  |
-| `│   ├── Description.txt`                    | Chapter description & metadata                       |
-| `│   ├── 1. Lesson Name.mp4`                 | Video lesson with proper naming                      |
-| `│   ├── 1. Lesson Name.txt`                 | Lesson description as text                           |
-| `│   ├── 1. Lesson Name_content.html`        | Lesson HTML content (if available)                   |
-| `│   ├── 1. Lesson Name_filename.pdf`        | Attached PDF file                                    |
-| `│   ├── 1. Lesson Name_link.url`            | External link saved as URL shortcut                  |
-| `│   ├── 2. Lesson Name.mp4`                 | Next video lesson                                    |
-| `│   ├── 2. Lesson Name.txt`                 | Next lesson description                              |
-| `│   └── 3. Lesson Name.pdf`                 | Attached file to third lesson                        |
-| `└── 02_Another Chapter/`                    | Next chapter folder                                  |
-| `    ├── chapter_thumbnail.jpg`              | Another chapter thumbnail                            |
-| `    ├── Description.txt`                    | Another chapter description                          |
-| `    └── ...`                                | Continue with lessons and files                      |
+```
+Course Name/
+├── course_thumbnail.jpg          # Course cover image
+├── Description.txt               # Course name, description & cleaned content
+├── credits.txt                   # Tool attribution & GitHub link
+├── README.md                     # Course overview with description & metadata
+├── 1. Chapter Name/              # Chapter folder with numbered prefix
+│   ├── chapter_thumbnail.jpg     # Chapter cover image
+│   ├── Description.txt           # Chapter description & metadata
+│   ├── 1. Lesson Name.mp4        # Video lesson with proper naming
+│   ├── 1. Lesson Name.txt        # Lesson description as text
+│   ├── 1. Lesson Name_content.html # Lesson HTML content (if available)
+│   ├── 1. Attachment.pdf         # Attached PDF file
+│   ├── 1. Link.url               # External link saved as URL shortcut
+│   ├── 2. Lesson Name.mp4        # Next video lesson
+│   └── 2. Lesson Name.txt        # Next lesson description
+└── 2. Another Chapter/           # Next chapter folder
+    ├── chapter_thumbnail.jpg
+    ├── Description.txt
+    └── ...
+```
+
+### File Types
+
+| File Extension | Description |
+|----------------|-------------|
+| `.mp4` | Downloaded video lesson |
+| `.txt` | Lesson or chapter description |
+| `.html` | HTML content of a lesson |
+| `.pdf`, `.zip`, `.docx` | Downloaded attachments |
+| `.url` | External link shortcut (Windows format) |
+| `.jpg`, `.png` | Thumbnail images |
 
 ### Text File Format
 
@@ -190,7 +223,7 @@ Example of a formatted text file (`1. Lesson Name.txt`):
 
 ```
 Title: Deine Vision
-============================================================
+──────────────────────────────
 
 Was ist deine Herzensvision? In dieser Lektion lernst du,
 wie du deine langfristigen Ziele definierst und visualisierst.
@@ -207,14 +240,14 @@ wie du deine langfristigen Ziele definierst und visualisierst.
   [+] Total lessons: 373
   [+] Total duration: 427h 8m 22s
 
-  [*] Chapter: 01_Modul 1 | Einführung und Mindset
+  [*] Chapter: 1. Modul 1 | Einführung und Mindset
       Description: Dein Mindset ist der Schlüssel...
       Lessons: 7
 
     [*] Lesson 1: Herzlich Willkommen - Deine erste Woche!
-        📝 Description saved: 1. Herzlich Willkommen - Deine erste Woche!.txt
-        [*] Downloading video: 1. Herzlich Willkommen - Deine erste Woche!
-        [+] Downloaded: 1. Herzlich Willkommen - Deine erste Woche!.mp4 (15.23 MB)
+        Description saved: 1. Herzlich Willkommen - Deine erste Woche!.txt
+        [*] Downloading...
+        [+] Done: 1. Herzlich Willkommen - Deine erste Woche!.mp4 (15.23 MB)
 ```
 
 ---
@@ -235,14 +268,18 @@ The tool creates a `config.json` file on first run with the following structure:
   "ytdlp_threads": 4,
   "download_delay": 0.3,
   "chapter_delay": 1,
-   "course_delay": 2,
-  "chapter_limit": 100,
+  "course_delay": 2,
+  "chapter_limit": 50,
   "download_until_limit": true,
   "max_retries": 3,
   "retry_delay": 5,
   "ytdlp_retries": 10,
   "ytdlp_fragment_retries": 10,
-  "debug": false
+  "debug": false,
+  "use_playwright": true,
+  "playwright_headless": true,
+  "playwright_timeout": 10000,
+  "playwright_wait_for": "appc-post-content"
 }
 ```
 
@@ -261,25 +298,27 @@ The tool creates a `config.json` file on first run with the following structure:
 | `download_delay` | Delay between lesson downloads (seconds) | `0.3` |
 | `chapter_delay` | Delay between chapters (seconds) | `1` |
 | `course_delay` | Delay between courses (seconds) | `2` |
-| `chapter_limit` | Maximum lessons per chapter (`0` = unlimited) | `50` |
-| `download_until_limit` | Download first N lessons if exceeded (`true`) or skip chapter (`false`) | `true` |
-| `max_retries` | Maximum number of retry attempts for failed downloads | `3` |
+| `chapter_limit` | Maximum lessons per chapter | `50` |
+| `download_until_limit` | Download first N lessons if exceeded | `true` |
+| `max_retries` | Maximum retry attempts for failed downloads | `3` |
 | `retry_delay` | Delay between retry attempts (seconds) | `5` |
-| `ytdlp_retries` | Number of retries for yt-dlp video download | `10` |
-| `ytdlp_fragment_retries` | Number of retries for HLS fragment downloads | `10` |
-| `debug` | Enable debug output with detailed logging | `false` |
+| `ytdlp_retries` | Retries for yt-dlp video download | `10` |
+| `ytdlp_fragment_retries` | Retries for HLS fragment downloads | `10` |
+| `debug` | Enable debug output | `false` |
+| `use_playwright` | Enable Playwright for JavaScript rendering | `true` |
+| `playwright_headless` | Run Playwright in headless mode | `true` |
+| `playwright_timeout` | Page load timeout (ms) | `10000` |
+| `playwright_wait_for` | CSS selector to wait for | `appc-post-content` |
 
 ---
 
 ## 🔑 How to Get Your Config Values
 
-To use this tool, you need to extract some values from your memberspot platform. Follow this step-by-step guide:
+To use this tool, you need to extract some values from your memberspot platform.
 
 ### Prerequisites
 - A valid account on your memberspot platform
 - Browser with Developer Tools (Chrome, Firefox, Edge)
-
----
 
 ### Step 1: Get `firebase_api_key`
 
@@ -302,8 +341,6 @@ Request URL: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPasswo
                                                                               This is your firebase_api_key
 ```
 
----
-
 ### Step 2: Get `tenant_id`
 
 1. Still in the Network tab, find the same login request
@@ -323,8 +360,6 @@ Request URL: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPasswo
               This is your tenant_id
 }
 ```
-
----
 
 ### Step 3: Get `school_id`
 
@@ -362,8 +397,6 @@ https://client-api.memberspot.de/school-users/user-v2/V57dJFhCLVpklJx7Yn8e
 }
 ```
 
----
-
 ### Step 4: Get `base_url`
 
 This is simply the URL of your memberspot platform:
@@ -379,11 +412,7 @@ https://<your-domain>.mymemberspot.de/
 
 > ⚠️ **Note:** Do not include trailing slashes or paths after the domain
 
----
-
 ### Complete Example Configuration
-
-After gathering all values, your `config.json` should look like this:
 
 ```json
 {
@@ -397,19 +426,30 @@ After gathering all values, your `config.json` should look like this:
   "ytdlp_threads": 4,
   "download_delay": 0.3,
   "chapter_delay": 1,
-  "course_delay": 2
+  "course_delay": 2,
+  "chapter_limit": 50,
+  "download_until_limit": true,
+  "max_retries": 3,
+  "retry_delay": 5,
+  "ytdlp_retries": 10,
+  "ytdlp_fragment_retries": 10,
+  "debug": false,
+  "use_playwright": true,
+  "playwright_headless": true,
+  "playwright_timeout": 10000,
+  "playwright_wait_for": "appc-post-content"
 }
 ```
 
 ### Troubleshooting Extraction
 
-| Problem                          | Solution                                      |
-| -------------------------------- | --------------------------------------------- |
-| Can't find login request         | Make sure "Preserve log" is checked in Network tab |
-| `tenantId` not in request body   | Try clearing cache and logging in again       |
-| `schoolId` not found             | Try filtering for `user-v2` or `school-users` |
-| Values don't work                | Double-check for typos, especially at the end of strings |
-| Multiple tenant IDs found        | Use the one that appears in the login request |
+| Problem | Solution |
+|---------|----------|
+| Can't find login request | Make sure "Preserve log" is checked in Network tab |
+| `tenantId` not in request body | Try clearing cache and logging in again |
+| `schoolId` not found | Try filtering for `user-v2` or `school-users` |
+| Values don't work | Double-check for typos, especially at the end of strings |
+| Multiple tenant IDs found | Use the one that appears in the login request |
 
 ### Security Note
 
@@ -422,20 +462,18 @@ After gathering all values, your `config.json` should look like this:
 
 ## 🧠 Internals & How It Works
 
-The script:
-
 1. **Authenticates** with Firebase using email/password
 2. **Fetches user info** to get all accessible courses
 3. **Retrieves course structure** including all chapters
 4. **For each chapter**, requests detailed information including all posts
-5. **Extracts video URLs** (hlsSrc) from each post's video object
-6. **Downloads videos** using yt-dlp with multi-threading support
-7. **Saves descriptions** as formatted text files
-8. **Downloads attachments** (PDFs, files) from each lesson
-9. **Preserves chapter numbers** and lesson numbers in filenames
-10. **Creates README.md** with course overview and progress
-
-Everything is handled inside `dumper.py` with color-coded terminal output.
+5. **Uses Playwright** to render JavaScript content for modern sites
+6. **Extracts video URLs** (hlsSrc) from each post's video object
+7. **Downloads videos** using yt-dlp with multi-threading support
+8. **Saves descriptions** as formatted text files
+9. **Downloads attachments** (PDFs, files) from each lesson
+10. **Saves external links** as `.url` shortcut files
+11. **Preserves chapter numbers** and lesson numbers in filenames
+12. **Creates README.md** with course overview and progress
 
 ---
 
@@ -443,13 +481,18 @@ Everything is handled inside `dumper.py` with color-coded terminal output.
 
 ### Common Issues
 
-| Issue                          | Solution                                      |
-| ------------------------------ | --------------------------------------------- |
-| Login failed                   | Check email/password and config values       |
-| No courses found               | Verify school_id and tenant_id in config     |
-| Video download fails           | Ensure yt-dlp is installed and updated       |
-| FFmpeg not found               | Install ffmpeg or use yt-dlp only            |
-| Decompression errors           | Install brotli: `pip install brotli`         |
+| Issue | Solution |
+|-------|----------|
+| Login failed | Check email/password and config values |
+| No courses found | Verify `school_id` and `tenant_id` in config |
+| Video download fails | Ensure yt-dlp is installed and updated |
+| Playwright browser not found | Run `playwright install chromium` |
+| Content not loading | Try `--no-headless` to see what's happening |
+| Login page loop | Check cookies and session handling |
+| DRM protected video | Use N_m3u8DL-RE with the provided key |
+| FFmpeg not found | Install ffmpeg or use yt-dlp only |
+| Decompression errors | Install brotli: `pip install brotli` |
+| 403 errors on downloads | Try `--no-playwright` or check headers |
 
 ### Getting Your Config Values (Recap)
 
@@ -464,13 +507,13 @@ To get your `school_id`, `tenant_id`, and `firebase_api_key`:
 
 ## 🤝 Contributing
 
-Pull requests are always welcome.
-You can add:
+Pull requests are always welcome. You can add:
 - Support for more memberspot platforms
 - GUI interface
 - Resume functionality for interrupted downloads
 - Batch processing for multiple accounts
 - Performance improvements
+- Better error handling and recovery
 
 ---
 
@@ -488,8 +531,7 @@ MIT License - see LICENSE file
 
 ## ⭐ Support
 
-If you like this project, consider leaving a **star** ⭐ on GitHub.
-It motivates further updates and improvements.
+If you like this project, consider leaving a **star** ⭐ on GitHub. It motivates further updates and improvements.
 
 ---
 
@@ -497,3 +539,8 @@ It motivates further updates and improvements.
 
 - [Report Bug](https://github.com/bl4d3rvnner7/mymemberspot-dumper/issues)
 - [Request Feature](https://github.com/bl4d3rvnner7/mymemberspot-dumper/issues)
+- [GitHub Repository](https://github.com/bl4d3rvnner7/mymemberspot-dumper)
+
+---
+
+**Made with ❤️ by bl4d3rvnner7**
